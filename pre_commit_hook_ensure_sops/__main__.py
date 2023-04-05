@@ -37,14 +37,7 @@ def check_file(filename):
     Returns a boolean indicating wether given file is valid or not, as well as
     a string with a human readable success / failure message.
     """
-    # All YAML is valid JSON *except* if it contains hard tabs, and the default go
-    # JSON outputter uses hard tabs, and since sops is written in go it does the same.
-    # So we can't just use a YAML loader here - we use a yaml one if it ends in
-    # .yaml, but json otherwise
-    if filename.endswith('.yaml'):
-        loader_func = yaml.load
-    else:
-        loader_func = json.load
+    loader_func = yaml.load
     # sops doesn't have a --verify (https://github.com/mozilla/sops/issues/437)
     # so we implement some heuristics, primarily to guard against unencrypted
     # files being checked in.
