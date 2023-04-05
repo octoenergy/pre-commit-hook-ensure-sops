@@ -22,7 +22,7 @@ def validate_enc(item):
     """
 
     if isinstance(item, str):
-        return item.startswith('ENC[')
+        return item.startswith('ENC[') or item == ""
     elif isinstance(item, list):
         return all(validate_enc(i) for i in item)
     elif isinstance(item, dict):
