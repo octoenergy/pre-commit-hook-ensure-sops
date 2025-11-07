@@ -1,0 +1,42 @@
+[project]
+name = "pre-commit-hook-ensure-sops"
+version = "0.1.0"
+description = "Pre-commit hook to ensure Sops secrets are encrypted before committing."
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [
+    { name = "Yuvi Panda", email = "yuvipanda@gmail.com" }
+]
+dependencies = [
+    "ruamel.yaml==0.18.16"
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.7.1",
+    "import-linter>=2.3",
+    "mypy>=1.16.1",
+    "pytest>=8.4.1",
+    "ruff>=0.9.7",
+    "pre-commit>=4.2.0",
+]
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+pythonpath = ["pre_commit_hook_ensure_sops"]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+command_line = "-m pytest"
+source = ["pre_commit_hook_ensure_sops"]
+
+[tool.coverage.report]
+omit = ["tests"]
+show_missing = true
+skip_covered = true
+skip_empty = true
+
+[project.scripts]
+pre-commit-hook-ensure-sops = "pre_commit_hook_ensure_sops.hook:main"
