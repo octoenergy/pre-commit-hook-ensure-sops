@@ -6,3 +6,9 @@
   # or file path is encryped. Users of individual repos can exclude things
   # with `exclude` if necessary.
   files: .*secret.*
+- id: sops-mac-updated
+  language: python
+  entry: pre-commit-hook-ensure-sops-mac
+  name: Ensure sops files were edited with sops
+  # Same aggressive default as sops-encryption, for the same reason.
+  files: .*secret.*

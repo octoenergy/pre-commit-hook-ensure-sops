@@ -40,3 +40,4 @@ skip_empty = true
 
 [project.scripts]
 pre-commit-hook-ensure-sops = "pre_commit_hook_ensure_sops.hook:main"
+pre-commit-hook-ensure-sops-mac = "pre_commit_hook_ensure_sops.mac:main"
