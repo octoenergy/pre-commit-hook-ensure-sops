@@ -1,3 +1,4 @@
+import re
 from argparse import ArgumentParser
 from typing import Any
 
@@ -7,7 +8,9 @@ from ruamel.yaml.parser import ParserError
 yaml = YAML(typ="safe")
 
 
-def validate_enc(key: str | None, item: Any):
+def validate_enc(
+    key: str | None, item: Any, unencrypted_regex: re.Pattern | None = None
+) -> bool:
     """
     Validate given item is encrypted.
 
@@ -21,12 +24,19 @@ def validate_enc(key: str | None, item: Any):
     """
     if isinstance(key, str) and key.endswith("_unencrypted"):
         return True
+    elif isinstance(key, str) and unencrypted_regex and unencrypted_regex.search(key):
+        return True
     elif isinstance(item, str):
         return item.startswith("ENC[") or item == ""
     elif isinstance(item, list):
-        return all(validate_enc(None, i) for i in item)
+        return all(
+            validate_enc(None, i, unencrypted_regex=unencrypted_regex) for i in item
+        )
     elif isinstance(item, dict):
-        return all(validate_enc(key, val) for key, val in item.items())
+        return all(
+            validate_enc(key, val, unencrypted_regex=unencrypted_regex)
+            for key, val in item.items()
+        )
     else:
         return False
 
@@ -60,13 +70,22 @@ def check_file(filename):
             f"{filename}: sops metadata key not found in file, is not properly encrypted",
         )
 
+    if "unencrypted_regex" in doc["sops"]:
+        # sops supports marking values as unencrypted by suffixing the key with "_unencrypted"
+        # or by specifying a regex in the sops metadata. If the latter is present, we ignore
+        # any keys that match the regex.
+        unencrypted_regex = re.compile(doc["sops"]["unencrypted_regex"])
+    else:
+        unencrypted_regex = None
+
     invalid_keys = []
     for k in doc:
-        if k != "sops":
-            # Values under the `sops` key are not encrypted.
-            if not validate_enc(k, doc[k]):
-                # Collect all invalid keys so we can provide useful error message
-                invalid_keys.append(k)
+        # Values under the `sops` key are not encrypted.
+        if k != "sops" and not validate_enc(
+            k, doc[k], unencrypted_regex=unencrypted_regex
+        ):
+            # Collect all invalid keys so we can provide useful error message
+            invalid_keys.append(k)
 
     if invalid_keys:
         return (

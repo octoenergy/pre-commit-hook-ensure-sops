@@ -1,3 +1,5 @@
+import re
+
 from pre_commit_hook_ensure_sops.hook import validate_enc
 
 
@@ -77,6 +79,59 @@ def test_validate_enc_no_key():
                 "token1": "ENC[AES256_GCM,data:...,iv:...,tag:...,type:str]",
                 "token2": "ENC[AES256_GCM,data:...,iv:...,tag:...,type:str]",
             },
+        )
+        is True
+    )
+
+
+def test_validate_enc_unencrypted_regex():
+    unencrypted_regex = re.compile(r"^username$")
+    assert (
+        validate_enc(
+            "username",
+            "abc123",
+            unencrypted_regex=unencrypted_regex,
+        )
+        is True
+    )
+    assert (
+        validate_enc(
+            "username",
+            "ENC[AES256_GCM,data:...,iv:...,tag:...,type:str]",
+            unencrypted_regex=unencrypted_regex,
+        )
+        is True
+    )
+    assert (
+        validate_enc(
+            "username",
+            "",
+            unencrypted_regex=unencrypted_regex,
+        )
+        is True
+    )
+    assert (
+        validate_enc(
+            "password",
+            "abc123",
+            unencrypted_regex=unencrypted_regex,
+        )
+        is False
+    )
+    assert (
+        validate_enc(
+            "extraObjects",
+            [
+                {
+                    "apiVersion": "v1",
+                    "kind": "Secret",
+                    "metadata": {"name": "secret"},
+                    "stringData": {
+                        "token": "ENC[AES256_GCM,data:...,iv:...,tag:...,type:str]",
+                    },
+                },
+            ],
+            unencrypted_regex=re.compile(r"^(apiVersion|kind|metadata|type)$"),
         )
         is True
     )
