@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Validate if given list of files are encrypted with sops.
 """
