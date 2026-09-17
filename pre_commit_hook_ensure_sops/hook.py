@@ -126,13 +126,17 @@ def check_file(filename):
         unencrypted_regex = re.compile(doc["sops"][UNENCRYPTED_REGEX])
     elif mode == UNENCRYPTED_SUFFIX:
         unencrypted_suffix = doc["sops"][UNENCRYPTED_SUFFIX]
+    elif mode in ("encrypted_suffix", "encrypted_regex"):
+        # These modes are valid, so we still check for encrypted values
+        pass
     elif mode is not None:
         return (False, f"{filename}: sops {mode} is not currently supported")
 
     invalid_keys = []
     for k in doc:
         # Values under the `sops` key are not encrypted.
-        if k != "sops" and not validate_enc(
+        # Values beginning with # are skipped
+        if k != "sops" and not str(k).startswith("#") and not validate_enc(
             k,
             doc[k],
             unencrypted_regex=unencrypted_regex,
