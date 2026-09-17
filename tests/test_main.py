@@ -214,13 +214,79 @@ def test_check_file_multiple_modes(tmp_path):
     assert is_valid is False
 
 
+def test_check_file_encrypted_suffix_and_regex_supported(tmp_path):
+    # `encrypted_suffix` / `encrypted_regex` mean sops encrypts values selectively,
+    # but the file is still valid as long as every leaf value we see is encrypted
+    # (or a permitted `_unencrypted` key). The mode itself must not be rejected.
+    for mode in ("encrypted_suffix", "encrypted_regex"):
+        path = write_doc(
+            tmp_path,
+            {mode: "_enc"},
+            password=ENC,
+            token=ENC,
+            item_unencrypted="abc123",
+        )
+        is_valid, message = check_file(path)
+        assert is_valid is True, message
+
+
+def test_check_file_encrypted_mode_still_flags_plaintext(tmp_path):
+    # Enabling an encrypted_* mode does not switch off the encryption check:
+    # a plaintext value with no `_unencrypted` marker is still invalid.
+    for mode in ("encrypted_suffix", "encrypted_regex"):
+        path = write_doc(tmp_path, {mode: "_enc"}, password=ENC, username="bob")
+        is_valid, message = check_file(path)
+        assert is_valid is False
+        assert "username" in message
+
+
 def test_check_file_unsupported_mode(tmp_path):
     for mode in (
-        "encrypted_suffix",
-        "encrypted_regex",
         "unencrypted_comment_regex",
         "encrypted_comment_regex",
     ):
         path = write_doc(tmp_path, {mode: "_enc"}, password=ENC, username="bob")
-        is_valid, _ = check_file(path)
+        is_valid, message = check_file(path)
         assert is_valid is False
+        assert "not currently supported" in message
+
+
+def test_check_file_skips_top_level_comment_keys(tmp_path):
+    # sops can leave document comments as literal `#...` keys once loaded; these are
+    # not real secrets, so a plaintext value under a top-level `#` key is skipped.
+    path = tmp_path / "secret.yaml"
+    path.write_text(
+        "\n".join(
+            [
+                "password: " + ENC,
+                '"# this is a documentation comment": leave me in cleartext',
+                "sops:",
+                "    version: 3.13.2",
+                "    unencrypted_suffix: _unencrypted",
+            ]
+        )
+        + "\n"
+    )
+    is_valid, message = check_file(str(path))
+    assert is_valid is True, message
+
+
+def test_check_file_comment_skip_is_top_level_only(tmp_path):
+    # The `#` skip only applies to top-level keys; a plaintext value nested under a
+    # `#` key is still validated and must be encrypted.
+    path = tmp_path / "secret.yaml"
+    path.write_text(
+        "\n".join(
+            [
+                "config:",
+                '    "# nested comment": still-plaintext',
+                "sops:",
+                "    version: 3.13.2",
+                "    unencrypted_suffix: _unencrypted",
+            ]
+        )
+        + "\n"
+    )
+    is_valid, message = check_file(str(path))
+    assert is_valid is False
+    assert "config" in message
